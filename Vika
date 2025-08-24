@@ -1,0 +1,49 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'src/app_state.dart';
+import 'src/screens/login.dart';
+import 'src/screens/home.dart';
+import 'src/screens/buy_id.dart';
+import 'src/screens/sell_id.dart';
+import 'src/screens/chat.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  final appState = AppState();
+  await appState.init();
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => appState,
+      child: const FFMarketplaceApp(),
+    ),
+  );
+}
+
+class FFMarketplaceApp extends StatelessWidget {
+  const FFMarketplaceApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'FF Marketplace',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      initialRoute: '/login',
+      routes: {
+        '/login': (_) => const LoginScreen(),
+        '/home': (_) => const HomeScreen(),
+        '/buy': (_) => const BuyIdScreen(),
+        '/sell': (_) => const SellIdScreen(),
+        '/chat': (_) => const ChatScreen(),
+      },
+    );
+  }
+}
