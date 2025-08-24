@@ -1,0 +1,105 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
+import 'models/listing.dart';
+
+class AppState extends ChangeNotifier {
+  static const _kUserKey = 'user_name_v1';
+  static const _kListingsKey = 'listings_v1';
+  static const _kChatsKey = 'chats_v1';
+
+  String? userName;
+  List<Listing> listings = [];
+  final Map<String, List<Map<String, String>>> _chats = {};
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    userName = prefs.getString(_kUserKey);
+
+    final raw = prefs.getString(_kListingsKey);
+    if (raw != null) {
+      listings = (jsonDecode(raw) as List)
+          .map((e) => Listing.fromJson(e))
+          .toList();
+    } else {
+      listings = [
+        Listing(
+          id: const Uuid().v4(),
+          seller: 'ProSeller',
+          ffId: '123456789',
+          rank: 'Heroic',
+          level: 75,
+          skins: 'Cobra Bundle, Alpine Dragon',
+          priceINR: 3999,
+          notes: 'Linked to guest. Safe transfer via guide.',
+        ),
+        Listing(
+          id: const Uuid().v4(),
+          seller: 'GamerX',
+          ffId: '998877665',
+          rank: 'Diamond IV',
+          level: 62,
+          skins: 'Chrono, DJ Alok',
+          priceINR: 2199,
+          notes: 'Email linkable. No previous ban.',
+        ),
+      ];
+      await _saveListings();
+    }
+
+    final chatRaw = prefs.getString(_kChatsKey);
+    if (chatRaw != null) {
+      final decoded = jsonDecode(chatRaw) as Map<String, dynamic>;
+      decoded.forEach((k, v) {
+        _chats[k] = (v as List)
+            .map((e) => (e as Map).map((key, value) => MapEntry('$key', '$value')))
+            .toList();
+      });
+    }
+    notifyListeners();
+  }
+
+  Future<void> setUser(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kUserKey, name);
+    userName = name;
+    notifyListeners();
+  }
+
+  Future<void> addListing(Listing l) async {
+    listings.insert(0, l);
+    await _saveListings();
+    notifyListeners();
+  }
+
+  Future<void> removeListing(String id) async {
+    listings.removeWhere((e) => e.id == id);
+    await _saveListings();
+    notifyListeners();
+  }
+
+  Future<void> _saveListings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kListingsKey,
+      jsonEncode(listings.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  List<Map<String, String>> getChat(String listingId) {
+    return _chats[listingId] ?? [];
+  }
+
+  Future<void> sendMessage(String listingId, String from, String text) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = _chats.putIfAbsent(listingId, () => []);
+    list.add({
+      'from': from,
+      'text': text,
+      'ts': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString(_kChatsKey, jsonEncode(_chats));
+    notifyListeners();
+  }
+}
